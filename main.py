@@ -30,6 +30,7 @@ class Bone3dFunction(Ui_MainWindow):
         self.old_ids = []
         self.mesh = None
         self.save_mesh_name = ""
+        self.drill_radius = 1
         # setup ui
         self.ui = self.setupUi(program)
 
@@ -51,11 +52,22 @@ class Bone3dFunction(Ui_MainWindow):
         self.button_smooth.clicked.connect(self.change_to_smooth_mode)
         self.button_delete.clicked.connect(self.change_to_delete_mode)
         self.button_fill.clicked.connect(self.change_to_fill_mode)
-        # self.button_drill.clicked.connect(self.change_to_drill_mode)
+        self.button_drill.clicked.connect(self.handle_drill_mode)
         self.button_undo.clicked.connect(self.handle_undo_button)
         self.button_load_file.clicked.connect(self.handle_browse_file)
         self.button_save_model.clicked.connect(self.handle_save_file)
         self.line_edit_name_model.textChanged.connect(self.handle_name_model)
+        self.button_3d_printing.clicked.connect(self.handle_3d_printing)
+        self.spinbox_radius.valueChanged.connect(
+            self.handle_drill_radius_value_change)
+
+    def handle_drill_radius_value_change(self):
+        self.drill_radius = self.spinbox_radius.value()
+
+    def handle_3d_printing(self):
+        if (self.mesh is not None):
+            extrude_mesh = self.mesh.clone().extrude(10)
+            self.re_create_mesh(extrude_mesh)
 
     def handle_name_model(self):
         if (self.mesh is not None):
@@ -63,7 +75,7 @@ class Bone3dFunction(Ui_MainWindow):
 
     def handle_browse_file(self):
         if (self.mesh is not None):
-            self.plt.remove([self.mesh])
+            self.plt.clear()
         fname = QtWidgets.QFileDialog.getOpenFileName(
             self.ui, 'Import STL file', '', 'file (*.stl)')
         if (fname != None and fname[0] != ""):
@@ -71,7 +83,7 @@ class Bone3dFunction(Ui_MainWindow):
             self.mesh.cellcolors = np.ones([self.mesh.ncells, 3])*125
             self.ori_mesh = self.mesh.clone()
             self.plt += [self.mesh]
-            self.plt.show()
+            self.plt.show(axes=1)
 
     def handle_save_file(self):
         if (self.mesh is not None):
@@ -92,6 +104,13 @@ class Bone3dFunction(Ui_MainWindow):
             "CellsRGBA", 0, 1, on='cells')
         self.re_create_mesh(threshold)
 
+    def handle_drill_mode(self):
+        center = self.mesh.center_of_mass()
+        drill = vedo.Cylinder(
+            pos=(center[0], center[1], center[2]), r=self.drill_radius, height=1500)
+        self.mesh.cut_with_mesh(drill, invert=True)
+        self.re_create_mesh(self.mesh)
+
     def re_create_mesh(self, new_mesh):
         self.plt.remove([self.mesh])
         new_mesh.write('temp.stl')
@@ -101,15 +120,17 @@ class Bone3dFunction(Ui_MainWindow):
         self.plt.add([self.mesh]).render()
 
     def change_to_crop_mode(self):
-        self.mesh.cellcolors = np.ones([self.mesh.ncells, 3])*125
-        self.plt.render()
-        self.current_mode = SelectionMode.draw_spline_mode
+        if (self.mesh is not None):
+            self.mesh.cellcolors = np.ones([self.mesh.ncells, 3])*125
+            self.plt.render()
+            self.current_mode = SelectionMode.draw_spline_mode
 
     def change_to_smooth_mode(self):
-        threshold_mesh = self.mesh.clone().threshold(
-            "CellsRGBA", 0, 1, on='cells').smooth(niter=20)
-        new_threshold_mesh = vedo.merge(self.mesh.clone(), threshold_mesh)
-        self.re_create_mesh(new_threshold_mesh)
+        if (self.mesh is not None):
+            threshold_mesh = self.mesh.clone().smooth(niter=100).threshold(
+                "CellsRGBA", 0, 1, on='cells')
+            new_threshold_mesh = vedo.merge(self.mesh.clone(), threshold_mesh)
+            self.re_create_mesh(new_threshold_mesh)
 
     def change_to_delete_mode(self):
         if (len(self.selected_ids) > 0):
@@ -170,6 +191,7 @@ class Bone3dFunction(Ui_MainWindow):
                 self.cpoints, self.points, self.spline = [], None, None
                 self.top_pts, self.topline = [], None
                 self.re_create_mesh(self.mesh)
+
                 self.current_mode = SelectionMode.surface_mode
 
     def onMouseMove(self, event):
@@ -184,7 +206,6 @@ class Bone3dFunction(Ui_MainWindow):
 
                 self.plt.remove(
                     [self.points, self.spline, self.topline])
-                # self.plt.clear()
                 # make this 2d-screen point 3d:
                 cpt = self.plt.compute_world_coordinate(event.picked2d)
                 self.cpoints.append(cpt)
