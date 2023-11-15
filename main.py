@@ -1,10 +1,9 @@
 import sys
 from PyQt5 import QtWidgets
-from PyQt5.QtWidgets import QApplication, QDialog, QPushButton, QVBoxLayout
 import numpy as np
 from bone3d_ui import Ui_MainWindow
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-from vedo import Plotter, Mesh, BoxCutter, dataurl, Points
+from vedo import Plotter, Mesh, Points
 import vedo
 from enum import Enum
 
@@ -167,8 +166,7 @@ class Bone3dFunction(Ui_MainWindow):
                 n = vedo.fit_plane(pts, signed=True).normal
                 rib = vedo.Ribbon(pts - tol*n, pts + tol*n, closed=True)
                 self.mesh.cut_with_mesh(rib)
-                self.plt.remove(
-                    [self.spline, self.points]).render()
+                self.plt.clear()
                 self.cpoints, self.points, self.spline = [], None, None
                 self.top_pts, self.topline = [], None
                 self.re_create_mesh(self.mesh)
@@ -179,12 +177,14 @@ class Bone3dFunction(Ui_MainWindow):
             self.handleHighLight(event)
         elif self.current_mode == SelectionMode.draw_spline_mode:
             if self.drawmode:
-                # if event.actor:
-                #     self.top_pts.append(event.picked3d)
-                #     self.topline = Points(self.top_pts, r=4)
-                #     self.topline.c("red5").pickable(False)
+                if event.actor:
+                    self.top_pts.append(event.picked3d)
+                    self.topline = Points(self.top_pts, r=4)
+                    self.topline.c("red5").pickable(False)
 
-                self.plt.remove([self.points, self.spline])
+                self.plt.remove(
+                    [self.points, self.spline, self.topline])
+                # self.plt.clear()
                 # make this 2d-screen point 3d:
                 cpt = self.plt.compute_world_coordinate(event.picked2d)
                 self.cpoints.append(cpt)
@@ -193,7 +193,7 @@ class Bone3dFunction(Ui_MainWindow):
                     self.spline = vedo.Line(
                         self.cpoints, closed=True).lw(5).c('red5')
                     self.plt.add(
-                        [self.points, self.spline]).render()
+                        [self.points, self.spline, self.topline]).render()
 
     def onClose(self):
         # Disable the interactor before closing to prevent it
