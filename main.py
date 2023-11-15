@@ -14,7 +14,7 @@ class SelectionMode(Enum):
     draw_spline_mode = 2
 
 
-class Bone3dFunction(Ui_MainWindow, QtWidgets.QWidget):
+class Bone3dFunction(Ui_MainWindow):
 
     def __init__(self):
         super().__init__()
@@ -32,7 +32,7 @@ class Bone3dFunction(Ui_MainWindow, QtWidgets.QWidget):
         self.mesh = None
         self.save_mesh_name = ""
         # setup ui
-        self.setupUi(program)
+        self.ui = self.setupUi(program)
 
         self.frame = QtWidgets.QFrame()
         self.vtkWidget = QVTKRenderWindowInteractor(self.frame)
@@ -66,7 +66,7 @@ class Bone3dFunction(Ui_MainWindow, QtWidgets.QWidget):
         if (self.mesh is not None):
             self.plt.remove([self.mesh])
         fname = QtWidgets.QFileDialog.getOpenFileName(
-            self, 'Import STL file', '', 'file (*.stl)')
+            self.ui, 'Import STL file', '', 'file (*.stl)')
         if (fname != None and fname[0] != ""):
             self.mesh = Mesh(fname[0])
             self.mesh.cellcolors = np.ones([self.mesh.ncells, 3])*125
@@ -79,7 +79,7 @@ class Bone3dFunction(Ui_MainWindow, QtWidgets.QWidget):
             if (self.save_mesh_name != ""):
                 self.mesh.write(self.save_mesh_name + '.stl')
                 file = str(QtWidgets.QFileDialog.getExistingDirectory(
-                    self, "Select Directory"))
+                    self.ui, "Select Directory"))
                 self.mesh.write(file+'/'+self.save_mesh_name + '.stl')
 
     def handle_undo_button(self):
