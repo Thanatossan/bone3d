@@ -1,0 +1,7 @@
+*.stl
+exmaple/
+o3d/
+test.py
+temp/
+__pycache__/
+*.pcd
