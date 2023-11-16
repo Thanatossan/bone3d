@@ -193,13 +193,16 @@ class Bone3dFunction(Ui_MainWindow):
             self.drawmode = not self.drawmode
             if self.spline:
                 vedo.printc("Cutting the mesh please wait..", invert=True)
+                self.plt.render()
                 tol = self.mesh.diagonal_size()/2            # size of ribbon
                 pts = self.spline.points()
                 # compute normal vector
                 n = vedo.fit_plane(pts, signed=True).normal
                 rib = vedo.Ribbon(pts - tol*n, pts + tol*n, closed=True)
                 self.mesh.cut_with_mesh(rib)
-                self.plt.clear()
+                print(self.topline)
+                self.plt.remove([self.points, self.spline,
+                                self.topline])
                 self.cpoints, self.points, self.spline = [], None, None
                 self.top_pts, self.topline = [], None
                 self.re_create_mesh(self.mesh)
@@ -211,20 +214,25 @@ class Bone3dFunction(Ui_MainWindow):
             self.handleHighLight(event)
         elif self.current_mode == SelectionMode.draw_spline_mode:
             if self.drawmode:
-                if event.actor:
-                    self.top_pts.append(event.picked3d)
-                    self.topline = Points(self.top_pts, r=4)
-                    self.topline.c("red5").pickable(False)
-
-                self.plt.remove(
-                    [self.points, self.spline, self.topline])
-                # make this 2d-screen point 3d:
                 cpt = self.plt.compute_world_coordinate(event.picked2d)
+                if self.cpoints and vedo.mag(cpt - self.cpoints[-1]) < self.mesh.diagonal_size() * self.tol:
+                    return
                 self.cpoints.append(cpt)
-                self.points = vedo.Points(self.cpoints, r=8).c('black')
                 if len(self.cpoints) > 2:
-                    self.spline = vedo.Line(
-                        self.cpoints, closed=True).lw(5).c('red5')
+                    self.plt.remove([self.points, self.spline,
+                                     self.topline])
+                    self.points = Points(self.cpoints, r=5).c(
+                        'black').pickable(0)
+                    self.spline = vedo.Spline(self.cpoints, res=len(
+                        self.cpoints) * 4)  # not closed here
+
+                    if event.actor:
+                        self.top_pts.append(event.picked3d)
+                        self.topline = Points(self.top_pts, r=5)
+                        self.topline.c('red').pickable(False)
+
+                    self.spline.lw(5).c(
+                        'red').pickable(False)
                     self.plt.add(
                         [self.points, self.spline, self.topline]).render()
 
