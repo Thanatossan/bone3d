@@ -31,6 +31,7 @@ class Bone3dFunction(Ui_MainWindow):
         self.mesh = None
         self.save_mesh_name = ""
         self.drill_radius = 1
+        self.extrude_height = 1
         # setup ui
         self.ui = self.setupUi(program)
 
@@ -60,14 +61,24 @@ class Bone3dFunction(Ui_MainWindow):
         self.button_3d_printing.clicked.connect(self.handle_3d_printing)
         self.spinbox_radius.valueChanged.connect(
             self.handle_drill_radius_value_change)
+        self.extrude_input.valueChanged.connect(
+            self.handle_extrude_height_value_change)
+        self.button_extrude.clicked.connect(self.handle_extrude_button)
+
+    def handle_extrude_button(self):
+        if (self.mesh is not None):
+            extrude_mesh = self.mesh.clone().extrude(self.extrude_height)
+            self.re_create_mesh(extrude_mesh)
+
+    def handle_extrude_height_value_change(self):
+        self.extrude = self.extrude_input.value()
 
     def handle_drill_radius_value_change(self):
-        self.drill_radius = self.spinbox_radius.value()
+        self.extrude_height = self.spinbox_radius.value()
 
     def handle_3d_printing(self):
         if (self.mesh is not None):
-            extrude_mesh = self.mesh.clone().extrude(10)
-            self.re_create_mesh(extrude_mesh)
+            self.mesh.write('membrane.stl')
 
     def handle_name_model(self):
         if (self.mesh is not None):
@@ -118,6 +129,7 @@ class Bone3dFunction(Ui_MainWindow):
         self.mesh.cellcolors = np.ones([self.mesh.ncells, 3])*125
         self.selected_ids = np.array([]).astype(int)
         self.plt.add([self.mesh]).render()
+        self.plt.show(axes=1)
 
     def change_to_crop_mode(self):
         if (self.mesh is not None):
